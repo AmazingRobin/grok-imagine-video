@@ -436,6 +436,87 @@
       white-space: nowrap;
     }
 
+    .history-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .history-title {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 720;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .history-item {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .history-main {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .history-main:hover .history-prompt {
+      color: var(--accent);
+    }
+
+    .history-meta,
+    .history-status {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .history-prompt {
+      overflow: hidden;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 650;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .history-empty {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     pre {
       overflow: auto;
       max-height: 390px;
@@ -499,6 +580,19 @@
       }
 
       .url-list .btn {
+        width: 100%;
+      }
+
+      .history-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .history-actions {
+        justify-content: stretch;
+      }
+
+      .history-actions .btn {
         width: 100%;
       }
     }
@@ -684,6 +778,14 @@
 
           <ul id="urlList" class="url-list"></ul>
           <pre id="jsonOutput">{}</pre>
+
+          <section class="history-section" aria-labelledby="historyTitle">
+            <div class="history-header">
+              <h3 id="historyTitle" class="history-title">生成历史</h3>
+              <button id="clearHistoryBtn" class="btn secondary" type="button">全部删除</button>
+            </div>
+            <ul id="historyList" class="history-list"></ul>
+          </section>
         </div>
       </aside>
     </section>
@@ -700,7 +802,8 @@
       imageUrl: "grokImagineVideo.imageUrl",
       referenceImages: "grokImagineVideo.referenceImages",
       videoUrl: "grokImagineVideo.videoUrl",
-      requestId: "grokImagineVideo.requestId"
+      requestId: "grokImagineVideo.requestId",
+      history: "grokImagineVideo.history"
     };
 
     const fixedBaseUrl = "https://anyaigc.com";
@@ -751,7 +854,9 @@
       resultId: $("resultId"),
       resultState: $("resultState"),
       urlList: $("urlList"),
-      jsonOutput: $("jsonOutput")
+      jsonOutput: $("jsonOutput"),
+      historyList: $("historyList"),
+      clearHistoryBtn: $("clearHistoryBtn")
     };
 
     function setStatus(text, kind = "") {
@@ -1052,22 +1157,149 @@
       return urls;
     }
 
-    function renderResult(data, modeLabel) {
-      state.lastJson = data || {};
-      const requestId = findFirstId(data);
-      const status = findStatus(data);
-      const urls = Array.from(collectUrls(data));
-      const videoUrl = urls.find((url) => /\.(mp4|webm|mov)(\?|$)/i.test(url)) || urls[0] || "";
+    function loadHistory() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(storageKeys.history) || "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
 
-      els.resultMode.textContent = modeLabel || (state.mode === "edit" ? "编辑视频" : "创建视频");
-      els.resultId.textContent = requestId || "-";
-      els.resultState.textContent = status;
-      els.jsonOutput.textContent = JSON.stringify(data, null, 2);
+    function saveHistory(history) {
+      localStorage.setItem(storageKeys.history, JSON.stringify(history.slice(0, 50)));
+    }
 
-      if (requestId) {
-        els.requestId.value = requestId;
+    function formatHistoryTime(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString("zh-CN", { hour12: false });
+    }
+
+    function applyHistoryEntry(entry) {
+      state.lastJson = entry.data || {};
+      els.resultMode.textContent = entry.modeLabel || "-";
+      els.resultId.textContent = entry.requestId || "-";
+      els.resultState.textContent = entry.status || "-";
+      els.jsonOutput.textContent = JSON.stringify(entry.data || {}, null, 2);
+      if (entry.requestId) {
+        els.requestId.value = entry.requestId;
+      }
+      renderUrlList(entry.urls || []);
+      const videoUrl = entry.videoUrl || (entry.urls || []).find((url) => /\.(mp4|webm|mov)(\?|$)/i.test(url)) || "";
+      if (videoUrl) {
+        els.preview.src = videoUrl;
+        els.preview.classList.remove("hidden");
+        els.emptyPreview.classList.add("hidden");
+      } else {
+        els.preview.removeAttribute("src");
+        els.preview.classList.add("hidden");
+        els.emptyPreview.classList.remove("hidden");
+      }
+      setStatus("已载入历史记录", "ok");
+    }
+
+    function deleteHistoryEntry(id) {
+      saveHistory(loadHistory().filter((entry) => entry.id !== id));
+      renderHistory();
+      setStatus("历史记录已删除");
+    }
+
+    function clearHistory() {
+      localStorage.removeItem(storageKeys.history);
+      renderHistory();
+      setStatus("历史记录已清空");
+    }
+
+    function renderHistory() {
+      const history = loadHistory();
+      els.historyList.innerHTML = "";
+      if (!history.length) {
+        const empty = document.createElement("li");
+        empty.className = "history-empty";
+        empty.textContent = "暂无生成历史";
+        els.historyList.appendChild(empty);
+        return;
       }
 
+      history.forEach((entry) => {
+        const li = document.createElement("li");
+        li.className = "history-item";
+
+        const main = document.createElement("button");
+        main.className = "history-main";
+        main.type = "button";
+        main.title = "载入这条历史记录";
+        main.addEventListener("click", () => applyHistoryEntry(entry));
+
+        const prompt = document.createElement("div");
+        prompt.className = "history-prompt";
+        prompt.textContent = entry.prompt || entry.requestId || "未命名任务";
+
+        const meta = document.createElement("div");
+        meta.className = "history-meta";
+        meta.textContent = `${entry.modeLabel || "-"} · ${formatHistoryTime(entry.updatedAt)}`;
+
+        const status = document.createElement("div");
+        status.className = "history-status";
+        status.textContent = `状态：${entry.status || "-"} · 链接：${(entry.urls || []).length}`;
+
+        main.appendChild(prompt);
+        main.appendChild(meta);
+        main.appendChild(status);
+
+        const actions = document.createElement("div");
+        actions.className = "history-actions";
+
+        const openButton = document.createElement("button");
+        openButton.className = "btn secondary";
+        openButton.type = "button";
+        openButton.textContent = "新页面打开";
+        openButton.disabled = !entry.videoUrl;
+        openButton.addEventListener("click", () => {
+          if (entry.videoUrl) window.open(entry.videoUrl, "_blank", "noopener,noreferrer");
+        });
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "btn secondary";
+        deleteButton.type = "button";
+        deleteButton.textContent = "删除";
+        deleteButton.addEventListener("click", () => deleteHistoryEntry(entry.id));
+
+        actions.appendChild(openButton);
+        actions.appendChild(deleteButton);
+        li.appendChild(main);
+        li.appendChild(actions);
+        els.historyList.appendChild(li);
+      });
+    }
+
+    function addHistoryEntry(entry) {
+      if (!entry.requestId && !(entry.urls || []).length) return;
+      const history = loadHistory();
+      const id = entry.requestId || entry.videoUrl || `${Date.now()}`;
+      const existingIndex = history.findIndex((item) => item.id === id);
+      const existing = existingIndex >= 0 ? history[existingIndex] : {};
+      const nextEntry = {
+        ...existing,
+        ...entry,
+        id,
+        modeLabel: entry.modeLabel === "查询视频" && existing.modeLabel ? existing.modeLabel : entry.modeLabel,
+        prompt: entry.prompt || existing.prompt || "",
+        urls: (entry.urls || []).length ? entry.urls : (existing.urls || []),
+        videoUrl: entry.videoUrl || existing.videoUrl || "",
+        createdAt: existing.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      if (existingIndex >= 0) {
+        history.splice(existingIndex, 1);
+      }
+      history.unshift(nextEntry);
+      saveHistory(history);
+      renderHistory();
+    }
+
+    function renderUrlList(urls) {
       els.urlList.innerHTML = "";
       urls.forEach((url) => {
         const li = document.createElement("li");
@@ -1100,6 +1332,25 @@
         li.appendChild(copyButton);
         els.urlList.appendChild(li);
       });
+    }
+
+    function renderResult(data, modeLabel) {
+      state.lastJson = data || {};
+      const requestId = findFirstId(data);
+      const status = findStatus(data);
+      const urls = Array.from(collectUrls(data));
+      const videoUrl = urls.find((url) => /\.(mp4|webm|mov)(\?|$)/i.test(url)) || urls[0] || "";
+
+      els.resultMode.textContent = modeLabel || (state.mode === "edit" ? "编辑视频" : "创建视频");
+      els.resultId.textContent = requestId || "-";
+      els.resultState.textContent = status;
+      els.jsonOutput.textContent = JSON.stringify(data, null, 2);
+
+      if (requestId) {
+        els.requestId.value = requestId;
+      }
+
+      renderUrlList(urls);
 
       if (videoUrl) {
         els.preview.src = videoUrl;
@@ -1110,6 +1361,16 @@
         els.preview.classList.add("hidden");
         els.emptyPreview.classList.remove("hidden");
       }
+
+      addHistoryEntry({
+        requestId,
+        modeLabel: els.resultMode.textContent,
+        status,
+        prompt: els.prompt.value.trim(),
+        urls,
+        videoUrl,
+        data: state.lastJson
+      });
     }
 
     async function submitTask(event) {
@@ -1267,6 +1528,7 @@
       await navigator.clipboard.writeText(els.jsonOutput.textContent);
       setStatus("JSON 已复制", "ok");
     });
+    els.clearHistoryBtn.addEventListener("click", clearHistory);
 
     [
       els.apiKey,
@@ -1284,6 +1546,7 @@
     });
 
     loadSettings();
+    renderHistory();
   </script>
 </body>
 </html>
