@@ -1,0 +1,1245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Grok Imagine 视频生成</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --panel-soft: #f0f3f7;
+      --text: #17202a;
+      --muted: #667085;
+      --line: #d8dee7;
+      --accent: #156f68;
+      --accent-2: #205cc8;
+      --danger: #b42318;
+      --ok: #087443;
+      --shadow: 0 16px 40px rgba(25, 38, 52, .08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .shell {
+      width: min(1220px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 34px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: #0d3b3e;
+      color: #fff;
+      box-shadow: var(--shadow);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1.1;
+      font-weight: 760;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 720;
+    }
+
+    .panel-body {
+      padding: 18px;
+    }
+
+    .tabs,
+    .segmented {
+      display: inline-grid;
+      grid-auto-flow: column;
+      gap: 2px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+    }
+
+    .tab,
+    .segmented button {
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      min-height: 34px;
+      padding: 0 12px;
+      white-space: nowrap;
+    }
+
+    .tab[aria-selected="true"],
+    .segmented button[aria-pressed="true"] {
+      background: #fff;
+      color: var(--text);
+      box-shadow: 0 1px 3px rgba(16, 24, 40, .12);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+    }
+
+    .secret-field {
+      position: relative;
+    }
+
+    .secret-field input {
+      padding-right: 50px;
+    }
+
+    .icon-btn {
+      display: inline-grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .icon-btn:hover {
+      background: var(--panel-soft);
+      color: var(--text);
+    }
+
+    .secret-field .icon-btn {
+      position: absolute;
+      right: 5px;
+      top: 4px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #344054;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #c9d1dc;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input[type="file"] {
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    textarea {
+      min-height: 128px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(21, 111, 104, .14);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .upload-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .upload-preview {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px dashed #c9d1dc;
+      border-radius: 7px;
+      background: #fafbfc;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .upload-preview img {
+      width: 54px;
+      height: 54px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #e4e7ec;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      padding: 0 14px;
+      font-weight: 700;
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .btn.secondary {
+      color: var(--text);
+      background: #fff;
+      border-color: var(--line);
+    }
+
+    .btn.blue {
+      background: var(--accent-2);
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: .58;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+
+    .status-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      min-height: 22px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #98a2b3;
+    }
+
+    .dot.busy {
+      background: var(--accent-2);
+      animation: pulse 1.1s infinite ease-in-out;
+    }
+
+    .dot.ok {
+      background: var(--ok);
+    }
+
+    .dot.error {
+      background: var(--danger);
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(.85); opacity: .65; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+
+    .result-tools {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .video-wrap {
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #101828;
+      aspect-ratio: 16 / 9;
+      display: grid;
+      place-items: center;
+      margin-bottom: 14px;
+    }
+
+    .video-wrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #101828;
+    }
+
+    .empty-preview {
+      color: #cfd6e1;
+      text-align: center;
+      padding: 18px;
+      font-size: 14px;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 8px 12px;
+      margin-bottom: 14px;
+      color: #344054;
+      font-size: 13px;
+    }
+
+    .kv div:nth-child(odd) {
+      color: var(--muted);
+    }
+
+    .url-list {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 14px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .url-list a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--accent-2);
+      white-space: nowrap;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 10px;
+      background: #fff;
+    }
+
+    pre {
+      overflow: auto;
+      max-height: 390px;
+      margin: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #111827;
+      color: #e5e7eb;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        width: min(100% - 22px, 720px);
+        padding-top: 18px;
+      }
+
+      .topbar,
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        display: grid;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .tabs {
+        width: 100%;
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none">
+            <path d="M15 10.5 20 7v10l-5-3.5V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Grok Imagine 视频生成</h1>
+          <p>基于云雾 API：创建视频、编辑视频、查询任务结果。</p>
+        </div>
+      </div>
+      <div class="status-line" aria-live="polite">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">待命</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <form id="videoForm" class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">请求参数</h2>
+          <div class="tabs" role="tablist" aria-label="模式">
+            <button class="tab" type="button" role="tab" aria-selected="true" data-mode="generate">创建视频</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" data-mode="edit">编辑视频</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="form-grid">
+            <div class="field full">
+              <label for="apiKey">API Key</label>
+              <div class="secret-field">
+                <input id="apiKey" name="apiKey" type="password" autocomplete="off" placeholder="sk-..." required>
+                <button id="toggleApiKeyBtn" class="icon-btn" type="button" title="查看 API Key" aria-label="查看 API Key" aria-pressed="false">
+                  <svg id="eyeIcon" class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="1.8"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="hint">会缓存在当前浏览器的 localStorage。点击“清除密钥”可删除缓存。</div>
+            </div>
+
+            <div class="field">
+              <label for="model">模型</label>
+              <select id="model" name="model">
+                <option value="grok-imagine-video">grok-imagine-video</option>
+                <option value="grok-imagine-video-1.5-preview">grok-imagine-video-1.5-preview</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="resolution">分辨率</label>
+              <select id="resolution" name="resolution">
+                <option value="480p">480p</option>
+                <option value="720p">720p</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="aspectRatio">画幅</label>
+              <select id="aspectRatio" name="aspectRatio">
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+              </select>
+            </div>
+
+            <div id="durationField" class="field">
+              <label for="duration">时长</label>
+              <select id="duration" name="duration">
+                <option value="1">1 秒</option>
+                <option value="2">2 秒</option>
+                <option value="3">3 秒</option>
+                <option value="4" selected>4 秒</option>
+                <option value="5">5 秒</option>
+                <option value="6">6 秒</option>
+                <option value="7">7 秒</option>
+                <option value="8">8 秒</option>
+                <option value="9">9 秒</option>
+                <option value="10">10 秒</option>
+                <option value="11">11 秒</option>
+                <option value="12">12 秒</option>
+                <option value="13">13 秒</option>
+                <option value="14">14 秒</option>
+                <option value="15">15 秒</option>
+              </select>
+            </div>
+
+            <div class="field full">
+              <label for="prompt">提示词</label>
+              <textarea id="prompt" name="prompt" required placeholder="A serene lake at sunrise with mist rolling over the water"></textarea>
+            </div>
+
+            <div id="imageField" class="field full">
+              <label for="imageUrl">首帧图片 URL</label>
+              <div class="upload-row">
+                <input id="imageFile" name="imageFile" type="file" accept="image/*">
+                <button id="uploadImageBtn" class="btn secondary" type="button">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  上传
+                </button>
+              </div>
+              <div id="imageUploadPreview" class="upload-preview">选择本地图片后，提交任务前会自动上传并回填 URL。</div>
+              <input id="imageUrl" name="imageUrl" type="url" placeholder="https://...png">
+              <div class="hint">对应生成接口的 image 参数，只支持单图首帧。需要多图参考时请使用下面的 reference_images；两者不能同时使用。</div>
+            </div>
+
+            <div id="refsField" class="field full">
+              <label for="referenceImages">参考图片 URL</label>
+              <div class="upload-row">
+                <input id="referenceImageFiles" name="referenceImageFiles" type="file" accept="image/*" multiple>
+                <button id="uploadRefsBtn" class="btn secondary" type="button">
+                  <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 16V4m0 0 4 4m-4-4-4 4M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                  上传
+                </button>
+              </div>
+              <div id="refsUploadPreview" class="upload-preview">对应生成接口的 reference_images 参数，可一次选择多张图片，上传后的 URL 会追加到下方。</div>
+              <textarea id="referenceImages" name="referenceImages" placeholder="每行一个图片 URL"></textarea>
+              <div class="hint">多图参考请用这里，每行一个 URL。使用 reference_images 时不要再填写首帧 image。</div>
+            </div>
+
+            <div id="videoField" class="field full hidden">
+              <label for="videoUrl">原视频 URL</label>
+              <input id="videoUrl" name="videoUrl" type="url" placeholder="https://...mp4">
+            </div>
+
+            <div class="field full">
+              <label for="requestId">查询 request_id</label>
+              <input id="requestId" name="requestId" placeholder="创建或编辑返回的 request_id 会自动填入">
+            </div>
+          </div>
+
+          <div class="actions">
+            <div class="button-row">
+              <button id="submitBtn" class="btn" type="submit">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="m5 12 14-7-4 14-3-6-7-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+                提交任务
+              </button>
+              <button id="queryBtn" class="btn blue" type="button">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                查询结果
+              </button>
+              <button id="pollBtn" class="btn secondary" type="button">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5M4 5v4h4m12 10v-4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                自动轮询
+              </button>
+            </div>
+            <button id="clearKeyBtn" class="btn secondary" type="button">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M3 6h18M8 6V4h8v2m-9 0 1 14h8l1-14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              清除密钥
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <aside class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">结果</h2>
+          <div class="result-tools">
+            <button id="copyJsonBtn" class="btn secondary" type="button" title="复制 JSON">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M8 8h10v12H8V8Zm-2 8H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="video-wrap">
+            <video id="preview" class="hidden" controls playsinline></video>
+            <div id="emptyPreview" class="empty-preview">视频链接会在这里预览</div>
+          </div>
+
+          <div class="kv">
+            <div>模式</div><div id="resultMode">-</div>
+            <div>request_id</div><div id="resultId">-</div>
+            <div>状态</div><div id="resultState">-</div>
+          </div>
+
+          <ul id="urlList" class="url-list"></ul>
+          <pre id="jsonOutput">{}</pre>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const storageKeys = {
+      apiKey: "grokImagineVideo.apiKey",
+      mode: "grokImagineVideo.mode",
+      model: "grokImagineVideo.model",
+      resolution: "grokImagineVideo.resolution",
+      aspectRatio: "grokImagineVideo.aspectRatio",
+      duration: "grokImagineVideo.duration",
+      imageUrl: "grokImagineVideo.imageUrl",
+      referenceImages: "grokImagineVideo.referenceImages",
+      videoUrl: "grokImagineVideo.videoUrl",
+      requestId: "grokImagineVideo.requestId"
+    };
+
+    const fixedBaseUrl = "https://anyaigc.com";
+    const imageUploadUrl = "https://imageproxy.zhongzhuan.chat/api/upload";
+    const maxImageSize = 10 * 1024 * 1024;
+
+    const state = {
+      mode: "generate",
+      lastJson: {},
+      polling: false,
+      pollTimer: null
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    const els = {
+      form: $("videoForm"),
+      apiKey: $("apiKey"),
+      model: $("model"),
+      resolution: $("resolution"),
+      aspectRatio: $("aspectRatio"),
+      duration: $("duration"),
+      prompt: $("prompt"),
+      imageFile: $("imageFile"),
+      uploadImageBtn: $("uploadImageBtn"),
+      imageUploadPreview: $("imageUploadPreview"),
+      imageUrl: $("imageUrl"),
+      referenceImageFiles: $("referenceImageFiles"),
+      uploadRefsBtn: $("uploadRefsBtn"),
+      refsUploadPreview: $("refsUploadPreview"),
+      referenceImages: $("referenceImages"),
+      videoUrl: $("videoUrl"),
+      requestId: $("requestId"),
+      durationField: $("durationField"),
+      imageField: $("imageField"),
+      refsField: $("refsField"),
+      videoField: $("videoField"),
+      submitBtn: $("submitBtn"),
+      queryBtn: $("queryBtn"),
+      pollBtn: $("pollBtn"),
+      clearKeyBtn: $("clearKeyBtn"),
+      toggleApiKeyBtn: $("toggleApiKeyBtn"),
+      eyeIcon: $("eyeIcon"),
+      copyJsonBtn: $("copyJsonBtn"),
+      statusDot: $("statusDot"),
+      statusText: $("statusText"),
+      preview: $("preview"),
+      emptyPreview: $("emptyPreview"),
+      resultMode: $("resultMode"),
+      resultId: $("resultId"),
+      resultState: $("resultState"),
+      urlList: $("urlList"),
+      jsonOutput: $("jsonOutput")
+    };
+
+    function setStatus(text, kind = "") {
+      els.statusText.textContent = text;
+      els.statusDot.className = `dot ${kind}`.trim();
+    }
+
+    function setBusy(isBusy) {
+      els.submitBtn.disabled = isBusy;
+      els.queryBtn.disabled = isBusy;
+      els.clearKeyBtn.disabled = isBusy;
+      els.uploadImageBtn.disabled = isBusy;
+      els.uploadRefsBtn.disabled = isBusy;
+      if (isBusy) {
+        setStatus("请求中", "busy");
+      }
+    }
+
+    function normalizeApiKey(value) {
+      return value.replace(/^Bearer\s+/i, "").trim();
+    }
+
+    function saveSettings() {
+      const apiKey = normalizeApiKey(els.apiKey.value);
+      if (apiKey) localStorage.setItem(storageKeys.apiKey, apiKey);
+      localStorage.setItem(storageKeys.mode, state.mode);
+      localStorage.setItem(storageKeys.model, els.model.value);
+      localStorage.setItem(storageKeys.resolution, els.resolution.value);
+      localStorage.setItem(storageKeys.aspectRatio, els.aspectRatio.value);
+      localStorage.setItem(storageKeys.duration, els.duration.value);
+      localStorage.setItem(storageKeys.imageUrl, els.imageUrl.value);
+      localStorage.setItem(storageKeys.referenceImages, els.referenceImages.value);
+      localStorage.setItem(storageKeys.videoUrl, els.videoUrl.value);
+      localStorage.setItem(storageKeys.requestId, els.requestId.value);
+    }
+
+    function loadSettings() {
+      els.apiKey.value = localStorage.getItem(storageKeys.apiKey) || "";
+      setSelectValue(els.model, localStorage.getItem(storageKeys.model));
+      setSelectValue(els.resolution, localStorage.getItem(storageKeys.resolution));
+      setSelectValue(els.aspectRatio, localStorage.getItem(storageKeys.aspectRatio));
+      setSelectValue(els.duration, localStorage.getItem(storageKeys.duration));
+      els.imageUrl.value = localStorage.getItem(storageKeys.imageUrl) || "";
+      els.referenceImages.value = localStorage.getItem(storageKeys.referenceImages) || "";
+      els.videoUrl.value = localStorage.getItem(storageKeys.videoUrl) || "";
+      els.requestId.value = localStorage.getItem(storageKeys.requestId) || "";
+      setMode(localStorage.getItem(storageKeys.mode) === "edit" ? "edit" : "generate");
+    }
+
+    function setSelectValue(select, value) {
+      if (!value) return;
+      const exists = Array.from(select.options).some((option) => option.value === value);
+      if (exists) select.value = value;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.setAttribute("aria-selected", String(tab.dataset.mode === mode));
+      });
+      const edit = mode === "edit";
+      els.durationField.classList.toggle("hidden", edit);
+      els.imageField.classList.toggle("hidden", edit);
+      els.refsField.classList.toggle("hidden", edit);
+      els.videoField.classList.toggle("hidden", !edit);
+      els.model.value = edit ? "grok-imagine-video" : els.model.value;
+      els.resultMode.textContent = edit ? "编辑视频" : "创建视频";
+      localStorage.setItem(storageKeys.mode, mode);
+    }
+
+    function linesToUrls(value) {
+      return value
+        .split(/\n+/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+
+    function appendLines(textarea, lines) {
+      const existing = linesToUrls(textarea.value);
+      textarea.value = [...existing, ...lines].join("\n");
+      saveSettings();
+    }
+
+    function setUploadPreview(target, text, imageUrl = "") {
+      target.innerHTML = "";
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = "";
+        target.appendChild(img);
+      }
+      const span = document.createElement("span");
+      span.textContent = text;
+      target.appendChild(span);
+    }
+
+    function validateImageFile(file) {
+      if (!file) throw new Error("请先选择图片文件。");
+      if (!file.type.startsWith("image/")) throw new Error(`${file.name} 不是图片文件。`);
+      if (file.size > maxImageSize) throw new Error(`${file.name} 超过 10MB。`);
+    }
+
+    function extractUploadedUrl(data) {
+      if (data && typeof data.url === "string") return data.url;
+      if (data && data.data && typeof data.data.url === "string") return data.data.url;
+      throw new Error(`上传成功但没有返回 url：${JSON.stringify(data)}`);
+    }
+
+    async function uploadImageFile(file) {
+      validateImageFile(file);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(imageUploadUrl, {
+        method: "POST",
+        body: formData
+      });
+      const text = await response.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+      if (!response.ok) {
+        const message = typeof data === "string" ? data : (data && (data.error || data.message)) || text;
+        throw new Error(message || `图片上传失败：HTTP ${response.status}`);
+      }
+      return extractUploadedUrl(data);
+    }
+
+    async function uploadSelectedImage() {
+      const file = els.imageFile.files[0];
+      validateImageFile(file);
+      setStatus("正在上传首帧图片", "busy");
+      setUploadPreview(els.imageUploadPreview, `正在上传：${file.name}`);
+      const url = await uploadImageFile(file);
+      els.imageUrl.value = url;
+      saveSettings();
+      setUploadPreview(els.imageUploadPreview, `已上传：${file.name}`, url);
+      setStatus("首帧图片上传完成", "ok");
+      return url;
+    }
+
+    async function uploadSelectedRefs() {
+      const files = Array.from(els.referenceImageFiles.files);
+      if (!files.length) throw new Error("请先选择参考图片。");
+      files.forEach(validateImageFile);
+
+      const urls = [];
+      for (let index = 0; index < files.length; index += 1) {
+        const file = files[index];
+        setStatus(`正在上传参考图 ${index + 1}/${files.length}`, "busy");
+        setUploadPreview(els.refsUploadPreview, `正在上传 ${index + 1}/${files.length}：${file.name}`);
+        urls.push(await uploadImageFile(file));
+      }
+      appendLines(els.referenceImages, urls);
+      setUploadPreview(els.refsUploadPreview, `已上传 ${urls.length} 张参考图`);
+      setStatus("参考图上传完成", "ok");
+      return urls;
+    }
+
+    async function ensureUploadedImages() {
+      if (state.mode === "edit") return;
+      const hasImageFile = els.imageFile.files.length > 0;
+      const hasRefFiles = els.referenceImageFiles.files.length > 0;
+      const hasImageUrl = els.imageUrl.value.trim();
+      const hasRefUrls = linesToUrls(els.referenceImages.value).length > 0;
+
+      if ((hasImageFile || hasImageUrl) && (hasRefFiles || hasRefUrls)) {
+        throw new Error("首帧图片和参考图片不能同时使用。");
+      }
+      if (hasImageFile) {
+        await uploadSelectedImage();
+      }
+      if (hasRefFiles) {
+        await uploadSelectedRefs();
+      }
+    }
+
+    async function buildPayload() {
+      await ensureUploadedImages();
+      const payload = {
+        model: els.model.value,
+        prompt: els.prompt.value.trim(),
+        resolution: els.resolution.value,
+        aspect_ratio: els.aspectRatio.value
+      };
+
+      if (state.mode === "edit") {
+        payload.video = { url: els.videoUrl.value.trim() };
+        return payload;
+      }
+
+      payload.duration = Number(els.duration.value);
+      const imageUrl = els.imageUrl.value.trim();
+      const refs = linesToUrls(els.referenceImages.value);
+      if (imageUrl && refs.length) {
+        throw new Error("image 和 reference_images 不能同时使用。");
+      }
+      if (imageUrl) payload.image = { url: imageUrl };
+      if (refs.length) payload.reference_images = refs.map((url) => ({ url }));
+      return payload;
+    }
+
+    async function requestApi(action, payload = {}) {
+      const apiKey = normalizeApiKey(els.apiKey.value);
+      if (!apiKey) throw new Error("请先输入 API Key。");
+      saveSettings();
+
+      const body = {
+        action,
+        apiKey,
+        baseUrl: fixedBaseUrl,
+        ...payload
+      };
+
+      return directRequest(body);
+    }
+
+    async function directRequest(body) {
+      const headers = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${body.apiKey}`
+      };
+      const base = body.baseUrl.replace(/\/+$/, "");
+      const options = { headers };
+      let url = "";
+
+      if (body.action === "query") {
+        url = `${base}/v1/videos/${encodeURIComponent(body.requestId)}`;
+      } else {
+        url = `${base}${body.action === "edit" ? "/v1/videos/edits" : "/v1/videos/generations"}`;
+        options.method = "POST";
+        options.body = JSON.stringify(body.payload);
+      }
+
+      const response = await fetch(url, options);
+      const text = await response.text();
+      let data;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        data = text;
+      }
+      if (!response.ok) {
+        throw new Error(typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      }
+      return data;
+    }
+
+    function findFirstId(value) {
+      const preferred = ["request_id", "requestId", "task_id", "taskId", "id"];
+      const queue = [value];
+      while (queue.length) {
+        const current = queue.shift();
+        if (!current || typeof current !== "object") continue;
+        for (const key of preferred) {
+          const found = current[key];
+          if (typeof found === "string" || typeof found === "number") {
+            return String(found);
+          }
+        }
+        Object.values(current).forEach((item) => queue.push(item));
+      }
+      return "";
+    }
+
+    function findStatus(value) {
+      const keys = ["status", "state", "phase", "progress", "error", "message"];
+      const queue = [value];
+      while (queue.length) {
+        const current = queue.shift();
+        if (!current || typeof current !== "object") continue;
+        for (const key of keys) {
+          const found = current[key];
+          if (typeof found === "string" || typeof found === "number") {
+            return String(found);
+          }
+        }
+        Object.values(current).forEach((item) => queue.push(item));
+      }
+      return "-";
+    }
+
+    function collectUrls(value, urls = new Set()) {
+      if (!value) return urls;
+      if (typeof value === "string") {
+        if (/^https?:\/\//i.test(value)) urls.add(value);
+        return urls;
+      }
+      if (Array.isArray(value)) {
+        value.forEach((item) => collectUrls(item, urls));
+        return urls;
+      }
+      if (typeof value === "object") {
+        Object.values(value).forEach((item) => collectUrls(item, urls));
+      }
+      return urls;
+    }
+
+    function renderResult(data, modeLabel) {
+      state.lastJson = data || {};
+      const requestId = findFirstId(data);
+      const status = findStatus(data);
+      const urls = Array.from(collectUrls(data));
+      const videoUrl = urls.find((url) => /\.(mp4|webm|mov)(\?|$)/i.test(url)) || urls[0] || "";
+
+      els.resultMode.textContent = modeLabel || (state.mode === "edit" ? "编辑视频" : "创建视频");
+      els.resultId.textContent = requestId || "-";
+      els.resultState.textContent = status;
+      els.jsonOutput.textContent = JSON.stringify(data, null, 2);
+
+      if (requestId) {
+        els.requestId.value = requestId;
+      }
+
+      els.urlList.innerHTML = "";
+      urls.forEach((url) => {
+        const li = document.createElement("li");
+        const a = document.createElement("a");
+        a.href = url;
+        a.target = "_blank";
+        a.rel = "noreferrer";
+        a.textContent = url;
+        li.appendChild(a);
+        els.urlList.appendChild(li);
+      });
+
+      if (videoUrl) {
+        els.preview.src = videoUrl;
+        els.preview.classList.remove("hidden");
+        els.emptyPreview.classList.add("hidden");
+      } else {
+        els.preview.removeAttribute("src");
+        els.preview.classList.add("hidden");
+        els.emptyPreview.classList.remove("hidden");
+      }
+    }
+
+    async function submitTask(event) {
+      event.preventDefault();
+      try {
+        setBusy(true);
+        const payload = await buildPayload();
+        const data = await requestApi(state.mode === "edit" ? "edit" : "generate", { payload });
+        renderResult(data, state.mode === "edit" ? "编辑视频" : "创建视频");
+        setStatus("提交成功", "ok");
+      } catch (error) {
+        setStatus(error.message || "请求失败", "error");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function queryTask() {
+      const requestId = els.requestId.value.trim();
+      if (!requestId) {
+        setStatus("请输入 request_id", "error");
+        return null;
+      }
+
+      try {
+        setBusy(true);
+        const data = await requestApi("query", { requestId });
+        renderResult(data, "查询视频");
+        setStatus("查询完成", "ok");
+        return data;
+      } catch (error) {
+        setStatus(error.message || "查询失败", "error");
+        return null;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function shouldStopPolling(data) {
+      const status = findStatus(data).toLowerCase();
+      const urls = Array.from(collectUrls(data));
+      return urls.some((url) => /\.(mp4|webm|mov)(\?|$)/i.test(url)) ||
+        ["succeeded", "success", "completed", "complete", "done", "failed", "error", "cancelled"].includes(status);
+    }
+
+    async function pollTask() {
+      if (state.polling) {
+        state.polling = false;
+        clearTimeout(state.pollTimer);
+        els.pollBtn.classList.remove("blue");
+        setStatus("已停止轮询");
+        return;
+      }
+
+      if (!els.requestId.value.trim()) {
+        setStatus("请输入 request_id", "error");
+        return;
+      }
+
+      state.polling = true;
+      els.pollBtn.classList.add("blue");
+      setStatus("轮询中", "busy");
+
+      const tick = async () => {
+        if (!state.polling) return;
+        const data = await queryTask();
+        if (!state.polling) return;
+        if (data && shouldStopPolling(data)) {
+          state.polling = false;
+          els.pollBtn.classList.remove("blue");
+          setStatus("轮询完成", "ok");
+          return;
+        }
+        state.pollTimer = setTimeout(tick, 5000);
+      };
+
+      tick();
+    }
+
+    document.querySelectorAll(".tab").forEach((tab) => {
+      tab.addEventListener("click", () => setMode(tab.dataset.mode));
+    });
+    els.form.addEventListener("submit", submitTask);
+    els.queryBtn.addEventListener("click", queryTask);
+    els.pollBtn.addEventListener("click", pollTask);
+    els.imageFile.addEventListener("change", () => {
+      const file = els.imageFile.files[0];
+      if (!file) {
+        setUploadPreview(els.imageUploadPreview, "选择本地图片后，提交任务前会自动上传并回填 URL。");
+        return;
+      }
+      try {
+        validateImageFile(file);
+        setUploadPreview(els.imageUploadPreview, `已选择：${file.name}`, URL.createObjectURL(file));
+      } catch (error) {
+        setUploadPreview(els.imageUploadPreview, error.message);
+        els.imageFile.value = "";
+      }
+    });
+    els.referenceImageFiles.addEventListener("change", () => {
+      const files = Array.from(els.referenceImageFiles.files);
+      if (!files.length) {
+        setUploadPreview(els.refsUploadPreview, "可一次选择多张图片，上传后的 URL 会追加到下方。");
+        return;
+      }
+      try {
+        files.forEach(validateImageFile);
+        setUploadPreview(els.refsUploadPreview, `已选择 ${files.length} 张参考图`);
+      } catch (error) {
+        setUploadPreview(els.refsUploadPreview, error.message);
+        els.referenceImageFiles.value = "";
+      }
+    });
+    els.uploadImageBtn.addEventListener("click", async () => {
+      try {
+        setBusy(true);
+        await uploadSelectedImage();
+      } catch (error) {
+        setStatus(error.message || "图片上传失败", "error");
+      } finally {
+        setBusy(false);
+      }
+    });
+    els.uploadRefsBtn.addEventListener("click", async () => {
+      try {
+        setBusy(true);
+        await uploadSelectedRefs();
+      } catch (error) {
+        setStatus(error.message || "参考图上传失败", "error");
+      } finally {
+        setBusy(false);
+      }
+    });
+    els.clearKeyBtn.addEventListener("click", () => {
+      localStorage.removeItem(storageKeys.apiKey);
+      els.apiKey.value = "";
+      setStatus("密钥缓存已清除");
+    });
+    els.toggleApiKeyBtn.addEventListener("click", () => {
+      const show = els.apiKey.type === "password";
+      els.apiKey.type = show ? "text" : "password";
+      els.toggleApiKeyBtn.title = show ? "隐藏 API Key" : "查看 API Key";
+      els.toggleApiKeyBtn.setAttribute("aria-label", show ? "隐藏 API Key" : "查看 API Key");
+      els.toggleApiKeyBtn.setAttribute("aria-pressed", String(show));
+      els.eyeIcon.innerHTML = show
+        ? '<path d="M3 3l18 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M10.6 10.6A2 2 0 0 0 13.4 13.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8.5 5.5A10.8 10.8 0 0 1 12 5c6.1 0 9.5 7 9.5 7a16.9 16.9 0 0 1-2.7 3.5M6.1 6.8C3.8 8.5 2.5 12 2.5 12s3.4 7 9.5 7c1.4 0 2.7-.3 3.8-.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+        : '<path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" stroke-width="1.8"/>';
+    });
+    els.copyJsonBtn.addEventListener("click", async () => {
+      await navigator.clipboard.writeText(els.jsonOutput.textContent);
+      setStatus("JSON 已复制", "ok");
+    });
+
+    [
+      els.apiKey,
+      els.model,
+      els.resolution,
+      els.aspectRatio,
+      els.duration,
+      els.imageUrl,
+      els.referenceImages,
+      els.videoUrl,
+      els.requestId
+    ].forEach((el) => {
+      el.addEventListener("change", saveSettings);
+      el.addEventListener("input", saveSettings);
+    });
+
+    loadSettings();
+  </script>
+</body>
+</html>
