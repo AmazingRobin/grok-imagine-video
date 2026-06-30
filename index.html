@@ -403,10 +403,22 @@
       margin: 0 0 14px;
       padding: 0;
       list-style: none;
+      max-width: 100%;
+    }
+
+    .url-list li {
+      display: grid;
+      grid-template-columns: minmax(0, 320px) auto auto;
+      gap: 8px;
+      align-items: center;
+      max-width: 100%;
+      min-width: 0;
     }
 
     .url-list a {
       display: block;
+      width: min(100%, 320px);
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       color: var(--accent-2);
@@ -416,6 +428,12 @@
       border-radius: 7px;
       padding: 9px 10px;
       background: #fff;
+    }
+
+    .url-list .btn {
+      min-height: 38px;
+      padding: 0 10px;
+      white-space: nowrap;
     }
 
     pre {
@@ -461,9 +479,27 @@
         flex-direction: column;
       }
 
+      .url-list li {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+      }
+
+      .url-list a {
+        width: 100%;
+      }
+
       .tabs {
         width: 100%;
         grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .url-list li {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .url-list .btn {
+        width: 100%;
       }
     }
   </style>
@@ -601,10 +637,7 @@
               <input id="videoUrl" name="videoUrl" type="url" placeholder="https://...mp4">
             </div>
 
-            <div class="field full">
-              <label for="requestId">查询 request_id</label>
-              <input id="requestId" name="requestId" placeholder="创建或编辑返回的 request_id 会自动填入">
-            </div>
+            <input id="requestId" name="requestId" class="hidden" type="hidden">
           </div>
 
           <div class="actions">
@@ -614,18 +647,6 @@
                   <path d="m5 12 14-7-4 14-3-6-7-1Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
                 </svg>
                 提交任务
-              </button>
-              <button id="queryBtn" class="btn blue" type="button">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M21 21l-4.3-4.3m1.3-5.2a6.5 6.5 0 1 1-13 0 6.5 6.5 0 0 1 13 0Z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-                </svg>
-                查询结果
-              </button>
-              <button id="pollBtn" class="btn secondary" type="button">
-                <svg class="icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M20 11a8 8 0 0 0-14.6-4.5M4 13a8 8 0 0 0 14.6 4.5M4 5v4h4m12 10v-4h-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                自动轮询
               </button>
             </div>
             <button id="clearKeyBtn" class="btn secondary" type="button">
@@ -718,8 +739,6 @@
       refsField: $("refsField"),
       videoField: $("videoField"),
       submitBtn: $("submitBtn"),
-      queryBtn: $("queryBtn"),
-      pollBtn: $("pollBtn"),
       clearKeyBtn: $("clearKeyBtn"),
       toggleApiKeyBtn: $("toggleApiKeyBtn"),
       eyeIcon: $("eyeIcon"),
@@ -742,7 +761,6 @@
 
     function setBusy(isBusy) {
       els.submitBtn.disabled = isBusy;
-      els.queryBtn.disabled = isBusy;
       els.clearKeyBtn.disabled = isBusy;
       els.uploadImageBtn.disabled = isBusy;
       els.uploadRefsBtn.disabled = isBusy;
@@ -1057,8 +1075,29 @@
         a.href = url;
         a.target = "_blank";
         a.rel = "noreferrer";
+        a.title = url;
         a.textContent = url;
+
+        const openButton = document.createElement("button");
+        openButton.className = "btn secondary";
+        openButton.type = "button";
+        openButton.textContent = "新页面打开";
+        openButton.addEventListener("click", () => {
+          window.open(url, "_blank", "noopener,noreferrer");
+        });
+
+        const copyButton = document.createElement("button");
+        copyButton.className = "btn secondary";
+        copyButton.type = "button";
+        copyButton.textContent = "复制链接";
+        copyButton.addEventListener("click", async () => {
+          await navigator.clipboard.writeText(url);
+          setStatus("链接已复制", "ok");
+        });
+
         li.appendChild(a);
+        li.appendChild(openButton);
+        li.appendChild(copyButton);
         els.urlList.appendChild(li);
       });
 
@@ -1075,16 +1114,26 @@
 
     async function submitTask(event) {
       event.preventDefault();
+      let shouldStartPolling = false;
       try {
         setBusy(true);
         const payload = await buildPayload();
         const data = await requestApi(state.mode === "edit" ? "edit" : "generate", { payload });
         renderResult(data, state.mode === "edit" ? "编辑视频" : "创建视频");
-        setStatus("提交成功", "ok");
+        const requestId = els.requestId.value.trim();
+        if (requestId) {
+          shouldStartPolling = true;
+        } else {
+          setStatus("提交成功，未找到 request_id", "ok");
+        }
       } catch (error) {
         setStatus(error.message || "请求失败", "error");
       } finally {
         setBusy(false);
+      }
+
+      if (shouldStartPolling) {
+        startPolling();
       }
     }
 
@@ -1116,31 +1165,28 @@
         ["succeeded", "success", "completed", "complete", "done", "failed", "error", "cancelled"].includes(status);
     }
 
-    async function pollTask() {
-      if (state.polling) {
-        state.polling = false;
-        clearTimeout(state.pollTimer);
-        els.pollBtn.classList.remove("blue");
-        setStatus("已停止轮询");
-        return;
-      }
+    function stopPolling() {
+      state.polling = false;
+      clearTimeout(state.pollTimer);
+      state.pollTimer = null;
+    }
 
+    function startPolling() {
       if (!els.requestId.value.trim()) {
         setStatus("请输入 request_id", "error");
         return;
       }
 
+      stopPolling();
       state.polling = true;
-      els.pollBtn.classList.add("blue");
-      setStatus("轮询中", "busy");
+      setStatus("已提交，自动查询进度中", "busy");
 
       const tick = async () => {
         if (!state.polling) return;
         const data = await queryTask();
         if (!state.polling) return;
         if (data && shouldStopPolling(data)) {
-          state.polling = false;
-          els.pollBtn.classList.remove("blue");
+          stopPolling();
           setStatus("轮询完成", "ok");
           return;
         }
@@ -1154,8 +1200,6 @@
       tab.addEventListener("click", () => setMode(tab.dataset.mode));
     });
     els.form.addEventListener("submit", submitTask);
-    els.queryBtn.addEventListener("click", queryTask);
-    els.pollBtn.addEventListener("click", pollTask);
     els.imageFile.addEventListener("change", () => {
       const file = els.imageFile.files[0];
       if (!file) {
